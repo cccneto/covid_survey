@@ -1,0 +1,120 @@
+---
+title: "How much of the Spending on personal protective equipment is attributable to Covid-19 riskis?"
+subtitle: "Model Statistical Analysis"
+author: "Claudiano C. Cruz Neto; Roberta Teodoro Santos; Carlos Eduardo M. Silva"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r include=FALSE, warning=FALSE}
+library(haven)
+```
+
+
+```{r warning=FALSE, include=FALSE, message=FALSE}
+# chamando base sem imputacoes 
+covid_full <- read_dta("C:/Users/User/Dropbox/Averting Expenditures Paper/rmd/dados_rob/covid_full1.dta")
+
+# chamando base com imputacoes
+#covid_imp_rob <- read_dta("C:/Users/User/Dropbox/Averting Expenditures Paper/rmd/dados_rob/covid_basedados_imputado1.dta")
+
+# usando base tratada por roberta
+covid_imp_rob <- read_dta("C:/Users/User/Dropbox/Averting Expenditures Paper/rmd/dados_rob/covid.dta")
+
+as.factor(covid_imp_rob$sexo)
+as.factor(covid_imp_rob$equip_defensiv)
+as.factor(covid_imp_rob$morte_cov)
+as.factor(covid_imp_rob$estcivil)
+```
+
+```{r include=FALSE}
+library(sampleSelection)
+library(stargazer)
+```
+
+# Mudando nome variaveis
+```{r}
+library(dplyr)
+
+database <- covid_imp_rob
+
+colnames(database)[which(names(database) == "equip_defensiv")] <- "pp.equip"
+colnames(database)[which(names(database) == "lngastos")] <- "ln.expend"
+colnames(database)[which(names(database) == "sexo")] <- "gender"
+colnames(database)[which(names(database) == "d_raca")] <- "race"
+colnames(database)[which(names(database) == "idade")] <- "age"
+colnames(database)[which(names(database) == "lndeaths")] <- "ln.deaths"
+colnames(database)[which(names(database) == "filho_dep")] <- "care"
+colnames(database)[which(names(database) == "plano")] <- "h.insurance"
+colnames(database)[which(names(database) == "morte_cov")] <- "d.contact"
+colnames(database)[which(names(database) == "estcivil")] <- "married"
+colnames(database)[which(names(database) == "lnrenda")] <- "ln.income"
+colnames(database)[which(names(database) == "lnconfirmados")] <- "ln.cases"
+colnames(database)[which(names(database) == "deaths")] <- "deaths"
+colnames(database)[which(names(database) == "school")] <- "school"
+colnames(database)[which(names(database) == "income")] <- "income"
+colnames(database)[which(names(database) == "qtd_filho_dep")] <- "n.care"
+
+```
+
+# Testando hipotes de gastos catastrofico segundo OMS
+```{r}
+head(mutate(database, CHE = ifelse(database$gasto_equip_defensivo/database$renda >= 0.4, 1, 0))) %>%  
+  summarise(Valor = sum(CHE))
+```
+
+# Modelo Definido
+
+```{r}
+modelo_heck = heckit(
+  selection = pp.equip ~ gender + d.contact + married,
+  outcome = ln.expend ~ gender + age + race + ln.deaths + care + ln.income + h.insurance,
+  data = database,
+  method = "2step"
+)
+
+```
+
+```{r}
+# verificar se os filtros estão aplicados
+database %>%  filter(pp.equip == 1 & gasto_equip_defensivo == 0)
+database %>%  filter(pp.equip == 0 & gasto_equip_defensivo > 0)
+database %>%  filter(age < 16)
+```
+
+```{r}
+summary(modelo_heck)
+stargazer(modelo_heck, type = 'text')
+```
+
+```{r}
+database %>% 
+  filter(!is.na(gasto_equip_defensivo) & !is.na(renda)) %>% 
+  mutate(mean_gasto = mean(gasto_equip_defensivo), mean_renda = mean(renda)) %>% 
+  mutate(prop_gasto = mean_gasto/mean_renda)
+
+database %>% 
+  filter(!is.na(renda)) %>% 
+  mutate(mean_renda = mean(renda))
+```
+
+```{r}
+database %>% filter(!is.na(pp.equip)) %>% 
+  group_by(pp.equip) %>%
+  summarise(
+    n = n() ) 
+
+database %>% filter(!is.na(gasto_equip_defensivo)) %>% 
+  group_by(pp.equip) %>%
+  summarise(
+    n = n() 
+    ) 
+
+```
+
