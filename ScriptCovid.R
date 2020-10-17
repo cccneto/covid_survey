@@ -10,6 +10,7 @@ as.factor(database$sexo)
 as.factor(database$equip_defensiv)
 as.factor(database$morte_cov)
 as.factor(database$estcivil)
+as.facotr(gender)
 
 
 # changing variable names 
@@ -34,6 +35,42 @@ colnames(database)[which(names(database) == "income")] <- "income"
 colnames(database)[which(names(database) == "qtd_filho_dep")] <- "n.care"
 
 
+library(dplyr)
+
+database2 <- database %>% select(pp.equip, gender, d.contact, married, ln.expend, 
+                     age, race, ln.deaths, care, ln.income, h.insurance)
+
+library(psych)
+describeBy(database2,
+           database2$pp.equip) # grouping variable
+
+library(pastecs)
+attach(database2)
+scores <- cbind(pp.equip, gender, d.contact, married, ln.expend, 
+              age, race, ln.deaths, care, ln.income, h.insurance)
+
+options(scipen=100)
+options(digits=2)
+stat.desc(scores, nbr.vall = FALSE)
+
+
+# Descriptive Statistics
+library(jmv)
+descriptives(
+  data = database2,
+  vars = c("pp.equip", "gender", "d.contact", "married", "ln.expend", 
+           "age", "race", "ln.deaths", "care", "ln.income", "h.insurance"),
+  #splitBy = "gender",
+  freq = FALSE, hist = FALSE,
+  dens = FALSE, bar = FALSE, barCounts = FALSE, box = FALSE,
+  violin = FALSE, dot = FALSE, dotType = "jitter",
+  missing = F, mean = TRUE, median = F, mode = FALSE,
+  sum = F, sd = T, variance = FALSE, range = FALSE,
+  min = TRUE, max = TRUE, se = FALSE, skew = FALSE, kurt = FALSE,
+  quart = FALSE, pcEqGr = FALSE, pcNEqGr = 4,  n = TRUE,
+  )
+
+
 # Heckit Procedure 
 library(sampleSelection)
 model_heck = heckit(
@@ -43,6 +80,8 @@ model_heck = heckit(
   method = "2step"
 )
 
+nrow(database)
+summary(model_heck)
 # checking condictions 
 database %>%  filter(pp.equip == 1 & ln.expend == 0)
 database %>%  filter(pp.equip == 0 & ln.expend > 0)
